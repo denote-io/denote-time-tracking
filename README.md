@@ -2,7 +2,7 @@
 
 Use a timer, countdowns, and alarms alongside note time tracking, summaries, and auditable session exports.
 
-This is an optional [Denote](https://github.com/mbianchidev/denote) plugin. Its
+This is an optional [Denote](https://github.com/denote-io/denote) plugin. Its
 user guide is [guide.md](guide.md); Denote shows the same guide in
 **Settings → Plugins**.
 
