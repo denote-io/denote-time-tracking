@@ -2,6 +2,12 @@
   "name": "@denote/plugin-time-tracking",
   "version": "0.2.1",
   "private": true,
+  "description": "Use a timer, countdowns, and alarms alongside note time tracking, summaries, and auditable session exports.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/denote-io/denote-time-tracking.git"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "files": [
@@ -10,7 +16,36 @@
     "guide.md",
     "icon.svg"
   ],
+  "engines": {
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
+  },
+  "scripts": {
+    "build": "denote-plugin build",
+    "check": "denote-plugin check",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "package": "denote-plugin build && denote-plugin check --artifacts && denote-plugin pack",
+    "dev": "denote-plugin dev"
+  },
   "dependencies": {
-    "@denote/plugin-sdk": "0.1.0"
+    "@denote/plugin-sdk": "github:denote-io/denote-plugin-sdk#v0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "acorn": "^8.19.0",
+    "jsdom": "^31.0.1",
+    "pako": "3.0.3",
+    "tar": "^7.5.23",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "8.3.8",
+    "vitest": "^5.1.0"
+  },
+  "overrides": {
+    "rolldown": "1.2.15"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "fsevents": false
   }
 }

@@ -1,0 +1,92 @@
+name: Release
+
+# Publishes the version in plugin.json as an immutable GitHub release asset.
+# Bump plugin.json and package.json together before running this workflow.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Validate plugin source
+        run: npm run check
+
+      - name: Build and package
+        run: npm run package
+
+      - name: Verify the published version still reproduces
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UNREPRODUCIBLE_VERSION: ""
+        run: |
+          id="$(node -p 'require("./plugin.json").id')"
+          version="$(node -p 'require("./plugin.json").version')"
+          archive="$id-$version.tgz"
+          if ! gh release view "v$version" >/dev/null 2>&1; then
+            echo "v$version is not published yet."
+            exit 0
+          fi
+          gh release download "v$version" --pattern "$archive" --dir .published
+          if ! cmp -s ".published/$archive" ".plugin-artifacts/$archive"; then
+            if [ "$version" = "$UNREPRODUCIBLE_VERSION" ]; then
+              echo "::warning::v$version was built against an earlier SDK revision and does not reproduce with this SDK. Its published bytes stay authoritative; the next version must reproduce."
+              exit 0
+            fi
+            echo "::error::The source no longer reproduces the published v$version archive. Released versions are immutable; bump the version."
+            exit 1
+          fi
+          echo "Rebuilt $archive matches the published v$version asset."
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          id="$(node -p 'require("./plugin.json").id')"
+          version="$(node -p 'require("./plugin.json").version')"
+          name="$(node -p 'require("./plugin.json").name')"
+          tag="v$version"
+          archive=".plugin-artifacts/$id-$version.tgz"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "::error::$tag is already published. Released versions are immutable; bump the version."
+            exit 1
+          fi
+          sha256="$(sha256sum "$archive" | cut -d' ' -f1)"
+          size="$(stat -c%s "$archive")"
+          printf '%s\n' \
+            "$name $version for Denote." \
+            "" \
+            "Asset: \`$id-$version.tgz\`" \
+            "SHA-256: \`$sha256\`" \
+            "Size: $size bytes" \
+            "Source: $GITHUB_SHA" > release-notes.md
+          gh release create "$tag" "$archive" --target "$GITHUB_SHA" --title "$name $version" --notes-file release-notes.md
